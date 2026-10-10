@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Sprzedaż ogórków kiszonych</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: pasek (produkt + rok) → kafle kategorii, które są jednocześnie zakładkami → jedna tabela wybranej kategorii; formularz otwierany przyciskiem */
+:root {
+  --bg: #f5f6f4;
+  --surface: #ffffff;
+  --fg: #1a1f1b;
+  --muted: #6a736c;
+  --line: #e4e8e3;
+  --soft: #eef2ec;
+  --accent: #2d6a39;
+  --accent-ink: #ffffff;
+  --danger: #b4402c;
+  --c1: #4f8a32; --c2: #1f7a5a; --c3: #8a7a1c;
+  --font: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111412; --surface: #191d1a; --fg: #e6ebe6; --muted: #98a39b; --line: #2a302b; --soft: #212822;
+  --accent: #86c27a; --accent-ink: #0f160f; --danger: #ef8a76;
+  --c1: #9bd07d; --c2: #6cc6a0; --c3: #d6c467; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #111412; --surface: #191d1a; --fg: #e6ebe6; --muted: #98a39b; --line: #2a302b; --soft: #212822;
+  --accent: #86c27a; --accent-ink: #0f160f; --danger: #ef8a76;
+  --c1: #9bd07d; --c2: #6cc6a0; --c3: #d6c467; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 64px; display: grid; gap: 18px; }
+.num, td, .tile .val, tfoot { font-variant-numeric: tabular-nums; }
+
+/* Pasek górny */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.switch { display: inline-grid; grid-auto-flow: column; gap: 4px; background: var(--soft); border-radius: 12px; padding: 4px; }
+.switch button { background: transparent; color: var(--muted); font-weight: 700; font-size: 1rem; padding: 10px 20px; border-radius: 9px; }
+.switch button[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+.yearbox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+.yearbox select { width: auto; font-weight: 600; }
+.yr { display: inline-flex; align-items: center; gap: 8px; }
+.note { font-size: .88rem; color: var(--muted); background: var(--soft); border-radius: 10px; padding: 10px 14px; }
+
+/* Kafle = zakładki kategorii */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.tile { text-align: left; background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 14px 18px 16px; color: inherit; font: inherit; cursor: pointer; display: grid; gap: 2px; }
+.tile:hover { border-color: color-mix(in srgb, var(--tc) 45%, var(--line)); }
+.tile[aria-selected="true"] { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 7%, var(--surface)); }
+.tile .lbl { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .95rem; }
+.tile .lbl i { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
+.tile .val { font-weight: 800; font-size: clamp(2rem, 5vw, 2.6rem); line-height: 1.1; letter-spacing: -0.02em; }
+.tile .val span { font-size: .45em; font-weight: 600; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+.tile { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.tile .sub { font-size: .85rem; color: var(--muted); }
+.tile .price { display: grid; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.tile .price .pl { font-size: .75rem; color: var(--muted); }
+.tile .price b { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* Panel kategorii */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; min-width: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.bar h2 { margin: 0 auto 0 0; font-size: 1.25rem; font-weight: 800; }
+.filter { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+.filter select { width: auto; max-width: 220px; }
+
+form.add { display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr 1.1fr; gap: 10px 12px; padding: 16px 18px; background: var(--soft); border-bottom: 1px solid var(--line); }
+form.add .formhead { grid-column: 1 / -1; font-weight: 700; }
+.fld { display: grid; gap: 4px; min-width: 0; }
+.fld label { font-size: .78rem; font-weight: 600; color: var(--muted); }
+.formbtns { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
+.formmsg { grid-column: 1 / -1; font-size: .88rem; color: var(--danger); }
+.formmsg:empty { display: none; }
+
+input, select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; width: 100%; min-width: 0; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; font-weight: 600; border-radius: 9px; border: 1px solid transparent; padding: 9px 16px; cursor: pointer; white-space: nowrap; }
+.primary { background: var(--accent); color: var(--accent-ink); }
+.ghost { background: var(--surface); border-color: var(--line); color: var(--fg); }
+.link { background: none; border: none; padding: 4px 6px; color: var(--accent); font-weight: 600; }
+.link.del { color: var(--danger); }
+.link.del.armed { background: var(--danger); color: var(--surface); border-radius: 6px; }
+
+/* Tabela */
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+th, td { padding: 10px 12px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; padding-left: 18px; white-space: normal; }
+th:last-child, td:last-child { padding-right: 18px; }
+thead th { font-size: .78rem; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--surface); }
+thead th button { all: unset; cursor: pointer; display: inline-flex; gap: 3px; align-items: center; }
+thead th button:focus-visible { outline: 2px solid var(--accent); }
+thead th .ar { opacity: .3; }
+thead th.sorted { color: var(--fg); }
+thead th.sorted .ar { opacity: 1; color: var(--accent); }
+th.key, td.key { font-weight: 700; color: var(--fg); }
+tbody tr { border-bottom: 1px solid var(--line); }
+tbody tr:hover { background: var(--soft); }
+td.odb { font-weight: 600; min-width: 190px; }
+td.dim { color: var(--muted); }
+td.act { width: 1%; }
+tfoot tr { background: var(--soft); }
+tfoot td { font-weight: 700; padding-top: 12px; padding-bottom: 12px; }
+tfoot .k { display: block; font-size: .7rem; font-weight: 500; color: var(--muted); }
+.empty td { text-align: center !important; color: var(--muted); padding: 32px 18px; white-space: normal; }
+
+/* Telefon: wiersze jako karty */
+@media (max-width: 760px) {
+  form.add { grid-template-columns: 1fr 1fr; }
+  .tiles { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+  .tile { padding: 10px 12px 12px; }
+  .tile .lbl { font-size: .85rem; }
+  .tile .val { font-size: 1.45rem; }
+  .tile .sub { font-size: .75rem; }
+  .tile .price .pl { font-size: .68rem; }
+  .tile .price b { font-size: .95rem; }
+  td.odb { min-width: 0; }
+  form.add .fld.odb { grid-column: 1 / -1; }
+  .formbtns button { flex: 1; }
+  .switch { width: 100%; grid-auto-columns: 1fr; }
+  table, tbody, tfoot { display: block; }
+  thead { display: none; }
+  tbody tr, tfoot tr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 12px 16px; }
+  tfoot tr { border-top: 1px solid var(--line); }
+  td, th:first-child, td:first-child, td:last-child { padding: 0; text-align: left; white-space: normal; }
+  td[data-l]::before { content: attr(data-l); display: block; font-size: .72rem; color: var(--muted); font-weight: 500; }
+  td.odb { grid-column: 1 / -1; font-size: 1.02rem; }
+  td.act { grid-column: 1 / -1; width: auto; display: flex; justify-content: flex-end; }
+  tfoot td:first-child { grid-column: 1 / -1; }
+  tfoot td:empty { display: none; }
+  .empty td { display: block; }
+  .sortm { display: flex !important; }
+}
+.sortm { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+.sortm select { width: auto; }
+@media (prefers-reduced-motion: no-preference) { button, .tile { transition: background .15s, border-color .15s, color .15s; } }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="switch" role="tablist" aria-label="Produkt">
+      <button type="button" role="tab" data-group="ogorki">Ogórki kiszone</button>
+      <button type="button" role="tab" data-group="kapusta">Kapusta</button>
+    </div>
+    <div class="yearbox">
+      <button type="button" class="ghost" id="expBtn">Eksport danych</button>
+      <button type="button" class="ghost" id="impBtn">Import danych</button>
+      <input type="file" id="impFile" accept=".csv,.json,text/csv,application/json" hidden>
+      <span class="yr"><label for="year">Rok</label><select id="year"></select></span>
+    </div>
+  </div>
+  <div id="storeNote" class="note" hidden></div>
+
+  <div class="tiles" id="tiles" role="tablist" aria-label="Kategoria"></div>
+
+  <section class="panel" id="panel">
+    <div class="bar">
+      <h2 id="catTitle"></h2>
+      <div class="sortm"><label for="sortSel">Sortuj</label><select id="sortSel"></select></div>
+      <div class="filter"><label for="fSel">Odbiorca</label><select id="fSel"></select></div>
+      <button type="button" class="primary" id="addBtn">+ Dodaj sprzedaż</button>
+    </div>
+    <form class="add" id="form" novalidate hidden>
+      <div class="formhead" id="formHead">Nowa sprzedaż</div>
+      <div class="fld odb"><label for="odb">Odbiorca</label><input id="odb" list="odbiorcy" autocomplete="off" placeholder="Wpisz lub wybierz z listy"></div>
+      <div class="fld"><label for="kg">Ilość kg</label><input id="kg" inputmode="decimal" placeholder="0"></div>
+      <div class="fld"><label for="cena">Cena zł/kg</label><input id="cena" inputmode="decimal" placeholder="0,00"></div>
+      <div class="fld"><label for="tr" id="trLabel">Transport zł</label><input id="tr" inputmode="decimal" value="0"></div>
+      <div class="fld"><label for="data">Data sprzedaży</label><input id="data" type="date"></div>
+      <div class="formmsg" id="msg"></div>
+      <div class="formbtns">
+        <button type="button" class="ghost" id="cancel">Anuluj</button>
+        <button type="submit" class="primary" id="sub">Dodaj</button>
+      </div>
+    </form>
+    <div class="tablewrap"><table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tb"></tbody>
+      <tfoot id="tf"></tfoot>
+    </table></div>
+  </section>
+</div>
+
+<datalist id="odbiorcy"></datalist>
+
+<script>
+(function () {
+  const TR = { tr: "Transport", net: "Wartość − transport", po: "Cena po transporcie" };
+  const TRO = { tr: "Transport/opakowanie", net: "Wartość − transport/opakowanie", po: "Cena po transporcie/opakowaniu" };
+  const GROUPS = { ogorki: "Ogórki kiszone", kapusta: "Kapusta" };
+  const CATS = [
+    { id: "drobny", group: "ogorki", name: "Drobny", color: "var(--c1)", L: TR },
+    { id: "dwojka", group: "ogorki", name: "Dwójka", color: "var(--c2)", L: TR },
+    { id: "trojka", group: "ogorki", name: "Trójka", color: "var(--c3)", L: TR },
+    { id: "kapusta_kiszona", group: "kapusta", name: "Kapusta kiszona", color: "var(--c1)", L: TR },
+    { id: "kapusta_biala", group: "kapusta", name: "Kapusta biała", color: "var(--c2)", L: TRO },
+  ];
+  const LS_KEY = "ogorki-sprzedaz-v1";
+  const LS_UI = "ogorki-widok";
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+
+  let group = "ogorki";
+  const activeCat = { ogorki: "drobny", kapusta: "kapusta_kiszona" };
+  try { const s = JSON.parse(lsGet(LS_UI) || "{}"); if (GROUPS[s.group]) group = s.group; Object.assign(activeCat, s.activeCat || {}); } catch (e) {}
+  const saveUi = () => lsSet(LS_UI, JSON.stringify({ group, activeCat }));
+  const cat = () => CATS.find(c => c.id === activeCat[group]) || CATS.find(c => c.group === group);
+
+  const zl = new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const kgf = new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const fmtZl = v => zl.format(v) + " zł";
+  const fmtKg = v => kgf.format(v) + " kg";
+  const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  const parseNum = s => { const n = parseFloat(String(s).replace(/\s/g, "").replace(",", ".")); return isFinite(n) ? n : NaN; };
+  const r2 = n => Math.round(n * 100) / 100;
+  const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  const fmtDate = d => d ? d.split("-").reverse().join(".") : "";
+  const plural = n => n === 1 ? "sprzedaż" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "sprzedaże" : "sprzedaży");
+  const $ = id => document.getElementById(id);
+
+  let rows = [];
+  let coll = null, useLocal = false;
+  const ui = {};
+  CATS.forEach(c => ui[c.id] = { sortKey: "data", sortDir: "desc", filter: "" });
+  let editId = null;
+  let year = String(new Date().getFullYear());
+
+  const calc = r => {
+    const wartosc = r2(r.kg * r.cena);
+    const netto = r2(wartosc - r.transport);
+    return { wartosc, netto, cenaPo: r.kg > 0 ? netto / r.kg : 0 };
+  };
+  const COLS = [
+    { key: "odbiorca", label: "Odbiorca", get: r => r.odbiorca.toLocaleLowerCase("pl") },
+    { key: "kg", label: "Ilość", get: r => r.kg },
+    { key: "cena", label: "Cena zł/kg", get: r => r.cena },
+    { key: "wartosc", label: "Wartość sprzedaży", get: r => calc(r).wartosc },
+    { key: "transport", lk: "tr", get: r => r.transport },
+    { key: "netto", lk: "net", get: r => calc(r).netto },
+    { key: "cenaPo", lk: "po", get: r => calc(r).cenaPo },
+    { key: "data", label: "Data", get: r => r.data },
+  ];
+  const label = (col, c) => col.label || c.L[col.lk];
+  const inYear = r => year === "all" || (r.data || "").slice(0, 4) === year;
+
+  // --- Formularz ---
+  function openForm(r) {
+    const c = cat();
+    editId = r ? r.id : null;
+    $("formHead").textContent = r ? "Edycja sprzedaży · " + c.name : "Nowa sprzedaż · " + c.name;
+    $("trLabel").textContent = c.L.tr + " zł";
+    $("odb").value = r ? r.odbiorca : "";
+    $("kg").value = r ? String(r.kg).replace(".", ",") : "";
+    $("cena").value = r ? String(r.cena).replace(".", ",") : "";
+    $("tr").value = r ? String(r.transport).replace(".", ",") : "0";
+    $("data").value = r ? r.data : today();
+    $("sub").textContent = r ? "Zapisz zmiany" : "Dodaj";
+    $("msg").textContent = "";
+    $("form").hidden = false; $("addBtn").hidden = true;
+    $("form").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    $("odb").focus({ preventScroll: true });
+  }
+  function closeForm() { editId = null; $("form").hidden = true; $("addBtn").hidden = false; }
+  $("addBtn").addEventListener("click", () => openForm(null));
+  $("cancel").addEventListener("click", closeForm);
+  $("form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const c = cat(), msg = $("msg");
+    const odbiorca = $("odb").value.trim().replace(/\s+/g, " ");
+    const kg = parseNum($("kg").value), cena = parseNum($("cena").value);
+    const trRaw = $("tr").value.trim(); const transport = trRaw === "" ? 0 : parseNum(trRaw);
+    const data = $("data").value;
+    const errs = [];
+    if (!odbiorca) errs.push("wpisz odbiorcę");
+    if (!(kg > 0)) errs.push("podaj ilość kg większą od zera");
+    if (!(cena >= 0)) errs.push("podaj cenę");
+    if (!(transport >= 0)) errs.push(c.L.tr.toLocaleLowerCase("pl") + " musi być liczbą (0 jeśli brak)");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) errs.push("wybierz datę");
+    if (errs.length) { msg.textContent = "Popraw: " + errs.join(", ") + "."; return; }
+    const known = allReceivers().find(n => n.toLocaleLowerCase("pl") === odbiorca.toLocaleLowerCase("pl"));
+    const rec = { kat: c.id, odbiorca: known || odbiorca, kg: r2(kg), cena: r2(cena), transport: r2(transport), data };
+    const btn = $("sub"); btn.disabled = true;
+    try { await write(editId, rec); closeForm(); }
+    catch (err) {
+      msg.textContent = err && err.code === "invalid_argument" ? "Nie masz uprawnień do zapisu. Poproś właściciela strony o dostęp z możliwością edycji."
+        : err && err.code === "quota_exceeded" ? "Baza jest pełna. Usuń stare wpisy i spróbuj ponownie."
+        : "Nie udało się zapisać. Spróbuj ponownie za chwilę.";
+    } finally { btn.disabled = false; }
+  });
+
+  // --- Zapis ---
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  async function write(id, rec) {
+    if (!id) id = newId();
+    rec = { ...rec, updated: new Date().toISOString() };
+    if (useLocal) { rows = rows.filter(r => r.id !== id).concat([{ id, ...rec }]); persistLocal(); renderAll(); return; }
+    await coll.doc(id).set(rec);
+  }
+  async function remove(id) {
+    if (useLocal) { rows = rows.filter(r => r.id !== id); persistLocal(); renderAll(); return; }
+    try { await coll.doc(id).delete(); } catch (e) { showNote("Nie udało się usunąć wpisu. Spróbuj ponownie."); }
+  }
+  function persistLocal() { lsSet(LS_KEY, JSON.stringify(rows)); }
+  function loadLocal() { try { rows = JSON.parse(lsGet(LS_KEY) || "[]"); } catch (e) { rows = []; } }
+  function showNote(t) { const n = $("storeNote"); n.textContent = t; n.hidden = !t; }
+  function allReceivers() {
+    const m = new Map();
+    rows.forEach(r => { const k = r.odbiorca.toLocaleLowerCase("pl"); if (!m.has(k)) m.set(k, r.odbiorca); });
+    return [...m.values()].sort((a, b) => a.localeCompare(b, "pl"));
+  }
+
+  // --- Zdarzenia ---
+  document.querySelectorAll(".switch button").forEach(b => b.addEventListener("click", () => {
+    group = b.dataset.group; saveUi(); closeForm(); renderAll();
+  }));
+  $("tiles").addEventListener("click", e => {
+    const t = e.target.closest(".tile"); if (!t) return;
+    activeCat[group] = t.dataset.cat; saveUi(); closeForm(); renderAll();
+  });
+  $("year").addEventListener("change", e => { year = e.target.value; renderAll(); });
+  $("fSel").addEventListener("change", e => { ui[cat().id].filter = e.target.value; renderTable(); });
+  $("thead").addEventListener("click", e => {
+    const th = e.target.closest("th[data-key]"); if (!th) return;
+    const st = ui[cat().id], key = th.dataset.key;
+    if (st.sortKey === key) st.sortDir = st.sortDir === "asc" ? "desc" : "asc";
+    else { st.sortKey = key; st.sortDir = key === "odbiorca" ? "asc" : "desc"; }
+    renderTable();
+  });
+  $("sortSel").addEventListener("change", e => {
+    const [k, d] = e.target.value.split(":"); Object.assign(ui[cat().id], { sortKey: k, sortDir: d }); renderTable();
+  });
+  $("tb").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-act]"); if (!btn) return;
+    const id = btn.closest("tr").dataset.id;
+    if (btn.dataset.act === "edit") openForm(rows.find(r => r.id === id));
+    if (btn.dataset.act === "del") {
+      if (btn.classList.contains("armed")) remove(id);
+      else { btn.classList.add("armed"); btn.textContent = "Na pewno usunąć?"; setTimeout(() => { if (btn.isConnected) { btn.classList.remove("armed"); btn.textContent = "Usuń"; } }, 3500); }
+    }
+  });
+
+  // --- Render ---
+  function renderYears() {
+    const sel = $("year");
+    const ys = new Set(rows.map(r => (r.data || "").slice(0, 4)).filter(Boolean));
+    ys.add(String(new Date().getFullYear()));
+    const list = [...ys].sort().reverse();
+    sel.innerHTML = list.map(y => `<option value="${y}">${y}</option>`).join("") + `<option value="all">Wszystkie lata</option>`;
+    if (!(list.includes(year) || year === "all")) year = list[0];
+    sel.value = year;
+  }
+  function renderTiles() {
+    const cur = cat();
+    $("tiles").innerHTML = CATS.filter(c => c.group === group).map(c => {
+      const rs = rows.filter(r => r.kat === c.id && inYear(r));
+      const kg = rs.reduce((s, r) => s + r.kg, 0);
+      const net = rs.reduce((s, r) => s + calc(r).netto, 0);
+      return `<button type="button" role="tab" class="tile" data-cat="${c.id}" aria-selected="${c.id === cur.id}" style="--tc:${c.color}">
+        <span class="lbl"><i></i>${c.name}</span>
+        <span class="val">${kgf.format(r2(kg))}<span>kg</span></span>
+        <span class="sub">${rs.length} ${plural(rs.length)}</span>
+        <span class="sub">${fmtZl(r2(net))}</span>
+        <span class="price"><span class="pl">Średnia cena</span><b>${rs.length ? fmtZl(rs.reduce((s, r) => s + calc(r).cenaPo, 0) / rs.length) : "–"}</b></span>
+      </button>`;
+    }).join("");
+  }
+  function renderTable() {
+    const c = cat(), st = ui[c.id];
+    $("catTitle").textContent = c.name;
+    const base = rows.filter(r => r.kat === c.id && inYear(r));
+    const names = [...new Set(base.map(r => r.odbiorca))].sort((a, b) => a.localeCompare(b, "pl"));
+    if (st.filter && !names.includes(st.filter)) st.filter = "";
+    $("fSel").innerHTML = `<option value="">Wszyscy</option>` + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+    $("fSel").value = st.filter;
+
+    $("thead").innerHTML = COLS.map(col => {
+      const on = col.key === st.sortKey;
+      const cls = [on ? "sorted" : "", col.key === "cenaPo" ? "key" : ""].join(" ").trim();
+      return `<th data-key="${col.key}" class="${cls}" aria-sort="${on ? (st.sortDir === "asc" ? "ascending" : "descending") : "none"}"><button type="button">${label(col, c)}<span class="ar">${on ? (st.sortDir === "asc" ? "↑" : "↓") : "↕"}</span></button></th>`;
+    }).join("") + `<th><span class="sr" hidden>Akcje</span></th>`;
+    $("sortSel").innerHTML = COLS.flatMap(col => [["desc", "↓"], ["asc", "↑"]].map(([d, a]) => `<option value="${col.key}:${d}">${label(col, c)} ${a}</option>`)).join("");
+    $("sortSel").value = st.sortKey + ":" + st.sortDir;
+
+    let list = st.filter ? base.filter(r => r.odbiorca === st.filter) : base;
+    const col = COLS.find(x => x.key === st.sortKey), dir = st.sortDir === "asc" ? 1 : -1;
+    list = list.slice().sort((a, b) => {
+      const va = col.get(a), vb = col.get(b);
+      return (typeof va === "string" ? va.localeCompare(vb, "pl") : va - vb) * dir || (b.data || "").localeCompare(a.data || "");
+    });
+
+    const L = k => esc(label(COLS.find(x => x.key === k), c));
+    $("tb").innerHTML = !list.length
+      ? `<tr class="empty"><td colspan="9">${base.length ? "Brak sprzedaży dla tego odbiorcy." : "Brak sprzedaży w tym okresie. Kliknij „+ Dodaj sprzedaż”, żeby dodać pierwszą."}</td></tr>`
+      : list.map(r => { const k = calc(r); return `<tr data-id="${esc(r.id)}">
+          <td class="odb">${esc(r.odbiorca)}</td>
+          <td data-l="${L("kg")}">${fmtKg(r.kg)}</td>
+          <td data-l="${L("cena")}">${fmtZl(r.cena)}</td>
+          <td data-l="${L("wartosc")}">${fmtZl(k.wartosc)}</td>
+          <td data-l="${L("transport")}" class="${r.transport ? "" : "dim"}">${fmtZl(r.transport)}</td>
+          <td data-l="${L("netto")}">${fmtZl(k.netto)}</td>
+          <td data-l="${L("cenaPo")}" class="key">${fmtZl(k.cenaPo)}</td>
+          <td data-l="Data" class="dim">${fmtDate(r.data)}</td>
+          <td class="act"><button type="button" class="link" data-act="edit">Edytuj</button><button type="button" class="link del" data-act="del">Usuń</button></td>
+        </tr>`; }).join("");
+
+    const n = list.length, sum = f => list.reduce((s, r) => s + f(r), 0);
+    const avg = f => n ? fmtZl(sum(f) / n) : "–";
+    $("tf").innerHTML = n ? `<tr>
+      <td>Razem${st.filter ? " · " + esc(st.filter) : ""} <span class="k">${n} ${plural(n)}</span></td>
+      <td data-l="Suma kg">${fmtKg(r2(sum(r => r.kg)))}</td>
+      <td data-l="Średnia cena">${avg(r => r.cena)}</td>
+      <td data-l="Suma wartości">${fmtZl(r2(sum(r => calc(r).wartosc)))}</td>
+      <td data-l="Suma: ${L("transport")}">${fmtZl(r2(sum(r => r.transport)))}</td>
+      <td data-l="Suma: ${L("netto")}">${fmtZl(r2(sum(r => calc(r).netto)))}</td>
+      <td data-l="Średnia: ${L("cenaPo")}" class="key">${avg(r => calc(r).cenaPo)}</td>
+      <td></td><td></td></tr>` : "";
+  }
+  function renderAll() {
+    document.querySelectorAll(".switch button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.group === group)));
+    renderYears();
+    $("odbiorcy").innerHTML = allReceivers().map(n => `<option value="${esc(n)}"></option>`).join("");
+    renderTiles();
+    $("panel").style.setProperty("--tc", cat().color);
+    renderTable();
+  }
+  const normalize = (id, d) => ({ id, kat: d.kat, odbiorca: String(d.odbiorca || ""), kg: +d.kg || 0, cena: +d.cena || 0, transport: +d.transport || 0, data: String(d.data || "") });
+
+  // --- Eksport / import (CSV dla Excela, średnik, polskie przecinki) ---
+  const HDR = ["id", "kod", "Kategoria", "Odbiorca", "Ilość kg", "Cena zł/kg", "Wartość sprzedaży", "Transport zł", "Wartość po transporcie", "Cena po transporcie", "Data"];
+  const n2 = v => String(r2(v)).replace(".", ",");
+  const csvCell = v => { v = String(v); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  function toCsv() {
+    const lines = [HDR.join(";")];
+    rows.slice().sort((a, b) => (a.data || "").localeCompare(b.data || "")).forEach(r => {
+      const c = CATS.find(x => x.id === r.kat), k = calc(r);
+      lines.push([r.id, r.kat, c ? c.name : r.kat, r.odbiorca, n2(r.kg), n2(r.cena), n2(k.wartosc), n2(r.transport), n2(k.netto), n2(k.cenaPo), fmtDate(r.data)].map(csvCell).join(";"));
+    });
+    return "﻿" + lines.join("\r\n") + "\r\n";
+  }
+  function parseCsv(text) {
+    text = text.replace(/^﻿/, "");
+    const first = text.split(/\r?\n/)[0] || "";
+    const sep = (first.match(/;/g) || []).length >= (first.match(/,/g) || []).length ? ";" : (first.includes("\t") ? "\t" : ",");
+    const out = []; let row = [], cell = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === sep) { row.push(cell); cell = ""; }
+      else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cell); out.push(row); row = []; cell = ""; }
+      else cell += ch;
+    }
+    if (cell !== "" || row.length) { row.push(cell); out.push(row); }
+    return out.filter(r => r.some(x => x.trim() !== ""));
+  }
+  const normName = s => String(s).toLocaleLowerCase("pl").replace(/\s+/g, " ").trim();
+  function rowsFromCsv(text) {
+    const t = parseCsv(text); if (t.length < 2) return [];
+    const h = t[0].map(normName), col = name => h.indexOf(normName(name));
+    const iId = col("id"), iKod = col("kod"), iKat = col("Kategoria"), iOdb = col("Odbiorca"), iKg = col("Ilość kg"), iC = col("Cena zł/kg"), iT = col("Transport zł"), iD = col("Data");
+    if (iOdb < 0 || iKg < 0 || iC < 0 || (iKod < 0 && iKat < 0)) throw new Error("kolumny");
+    return t.slice(1).map(r => {
+      let kat = iKod >= 0 ? r[iKod].trim() : "";
+      if (!CATS.some(c => c.id === kat) && iKat >= 0) { const c = CATS.find(c => normName(c.name) === normName(r[iKat])); kat = c ? c.id : ""; }
+      let d = iD >= 0 ? r[iD].trim() : "";
+      const m = d.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
+      if (m) d = m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+      return { id: (iId >= 0 && r[iId].trim()) || newId(), kat, odbiorca: (r[iOdb] || "").trim(), kg: parseNum(r[iKg]), cena: parseNum(r[iC]), transport: iT >= 0 && r[iT].trim() !== "" ? parseNum(r[iT]) : 0, data: d };
+    });
+  }
+  $("expBtn").addEventListener("click", async () => {
+    if (!rows.length) { showNote("Nie ma jeszcze danych do eksportu."); return; }
+    const filename = "sprzedaz-" + today() + ".csv", data = toCsv();
+    if (window.claude && window.claude.use) {
+      const dl = await window.claude.use("downloads");
+      if (!dl) { showNote("Eksport nie jest dostępny w tym widoku."); return; }
+      try { await dl.save({ filename, data }); }
+      catch (e) { if (e && e.code !== "declined") showNote("Nie udało się zapisać pliku. Spróbuj ponownie za chwilę."); }
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([data], { type: "text/csv;charset=utf-8" })); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+  $("impBtn").addEventListener("click", () => $("impFile").click());
+  $("impFile").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    let inc;
+    try {
+      const text = await f.text();
+      if (/^\s*[\[{]/.test(text)) { const j = JSON.parse(text); inc = (Array.isArray(j) ? j : j.rows || []).map(r => ({ ...r, id: r.id || newId() })); }
+      else inc = rowsFromCsv(text);
+    } catch (err) { showNote("Nie udało się odczytać pliku. Wybierz plik zapisany przyciskiem „Eksport danych”."); return; }
+    const wp = n => n + " " + (n === 1 ? "wpis" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "wpisy" : "wpisów"));
+    const ok = inc.filter(r => CATS.some(c => c.id === r.kat) && r.odbiorca && r.kg > 0 && r.cena >= 0 && r.transport >= 0 && /^\d{4}-\d{2}-\d{2}$/.test(r.data))
+      .map(r => normalize(r.id, r));
+    const bad = inc.length - ok.length;
+    if (!ok.length) { showNote("W pliku nie było poprawnych wpisów do zaimportowania."); return; }
+    showNote("Importuję: " + wp(ok.length) + "…");
+    if (useLocal) {
+      const m = new Map(rows.map(r => [r.id, r])); ok.forEach(r => m.set(r.id, r));
+      rows = [...m.values()]; persistLocal(); renderAll();
+    } else {
+      try {
+        for (let i = 0; i < ok.length; i += 10) {
+          await Promise.all(ok.slice(i, i + 10).map(({ id, ...rec }) => coll.doc(id).set({ ...rec, updated: new Date().toISOString() })));
+        }
+      } catch (err) { showNote("Import przerwany. Część wpisów mogła się nie zapisać, spróbuj ponownie."); return; }
+    }
+    showNote("Zaimportowano: " + wp(ok.length) + "." + (bad ? " Pominięto " + bad + " niepełnych wierszy." : "") + " Wpisy o tym samym identyfikatorze zostały zastąpione, nie zdublowane.");
+  });
+
+  renderAll();
+
+  (async () => {
+    let db = null, uid = null;
+    try {
+      if (window.claude && window.claude.use) {
+        const [d, u] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+        db = d; uid = u ? await u.id() : null;
+      }
+    } catch (e) { db = null; }
+    if (!db || !uid) {
+      useLocal = true; loadLocal(); renderAll();
+      showNote(window.claude
+        ? "Dane zapisują się tylko w tej przeglądarce, bo wspólna baza nie jest tu dostępna. Otwórz stronę zalogowany w Claude, żeby zapisywać je na stałe."
+        : "Dane zapisują się w tej przeglądarce na tym urządzeniu. Co jakiś czas kliknij „Eksport danych”, żeby mieć kopię na wypadek wyczyszczenia przeglądarki lub zmiany telefonu.");
+      return;
+    }
+    // Każda osoba ma własne, prywatne wpisy
+    coll = db.doc("data/users/" + uid + "/app").collection("sprzedaz");
+    coll.onSnapshot(snap => {
+      rows = snap.docs.filter(d => d.exists).map(d => normalize(d.id, d.data())).filter(r => CATS.some(c => c.id === r.kat));
+      renderAll();
+    }, err => {
+      showNote(err && err.code === "revoked" ? "Dostęp do danych został zmieniony. Odśwież stronę." : "Nie udało się wczytać danych. Odśwież stronę.");
+    });
+  })();
+})();
+</script>
+
+</body></html>
